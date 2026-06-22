@@ -1,0 +1,23 @@
+{
+  "name": "hungarian-vat-declaration-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "This application processes invoice data from a CSV file and generates a simplified Hungarian VAT declaration summary.",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "dotnet run --project ./HungarianVatDeclarationGenerator.Api",
+    "dev:web": "npm --prefix ./HungarianVatDeclarationGenerator.Web run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nilvon9wo/hungarian-vat-declaration-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nilvon9wo/hungarian-vat-declaration-generator/issues"
+  },
+  "homepage": "https://github.com/nilvon9wo/hungarian-vat-declaration-generator#readme",
+  "license": "ISC"
+}

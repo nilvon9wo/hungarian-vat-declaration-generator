@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/HungarianVatDeclarationGenerator.Web/">
+    <File Path="HungarianVatDeclarationGenerator.Web/.gitignore" />
+    <File Path="HungarianVatDeclarationGenerator.Web/eslint.config.js" />
+    <File Path="HungarianVatDeclarationGenerator.Web/index.html" />
+    <File Path="HungarianVatDeclarationGenerator.Web/package-lock.json" />
+    <File Path="HungarianVatDeclarationGenerator.Web/package.json" />
+    <File Path="HungarianVatDeclarationGenerator.Web/README.md" />
+    <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.app.json" />
+    <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.json" />
+    <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.node.json" />
+    <File Path="HungarianVatDeclarationGenerator.Web/vite.config.ts" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="package.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="HungarianVatDeclarationGenerator.Api.Tests/HungarianVatDeclarationGenerator.Api.Tests.csproj" />
+  <Project Path="HungarianVatDeclarationGenerator.Api/HungarianVatDeclarationGenerator.Api.csproj" />
+</Solution>
