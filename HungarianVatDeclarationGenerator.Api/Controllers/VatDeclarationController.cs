@@ -1,3 +1,4 @@
+using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 using HungarianVatDeclarationGenerator.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,16 +11,20 @@ public sealed class VatDeclarationController(
     ICsvParserService csvParser,
     IVatCalculationService vatCalculator,
     IPdfGenerationService pdfGenerator,
-    ILogger<VatDeclarationController> logger
+    ILogger<VatDeclarationController> logger,
+    FileUploadSettings fileUploadSettings
 ) : ControllerBase
 {
-    private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
-    private static readonly string[] AllowedContentTypes = ["text/csv", "application/vnd.ms-excel"];
-
-    private readonly ICsvParserService _csvParser = csvParser;
-    private readonly IVatCalculationService _vatCalculator = vatCalculator;
-    private readonly IPdfGenerationService _pdfGenerator = pdfGenerator;
-    private readonly ILogger<VatDeclarationController> _logger = logger;
+    private readonly ICsvParserService _csvParser = csvParser
+        ?? throw new ArgumentNullException(nameof(csvParser));
+    private readonly IVatCalculationService _vatCalculator = vatCalculator
+        ?? throw new ArgumentNullException(nameof(vatCalculator));
+    private readonly IPdfGenerationService _pdfGenerator = pdfGenerator
+        ?? throw new ArgumentNullException(nameof(pdfGenerator));
+    private readonly ILogger<VatDeclarationController> _logger = logger
+        ?? throw new ArgumentNullException(nameof(logger));
+    private readonly FileUploadSettings _fileUploadSettings = fileUploadSettings
+        ?? throw new ArgumentNullException(nameof(fileUploadSettings));
 
     /// <summary>
     /// Upload a CSV file containing invoice data and receive a VAT declaration summary.
@@ -30,17 +35,22 @@ public sealed class VatDeclarationController(
     [HttpPost("upload")]
     [ProducesResponseType(typeof(Models.VatDeclarationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status408RequestTimeout)]
     public async Task<IActionResult> UploadCsv(
             IFormFile file,
             CancellationToken cancellationToken
         )
     {
-        _logger.LogInformation("Processing CSV upload: {FileName}", file?.FileName);
+        string sanitizedFilename = SanitizeFilename(file?.FileName);
+        _logger.LogInformation("Processing CSV upload: {FileName}", sanitizedFilename);
 
         ValidateFile(file);
 
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(_fileUploadSettings.ProcessingTimeoutSeconds));
+
         await using Stream stream = file!.OpenReadStream();
-        IReadOnlyList<Invoice> invoices = await _csvParser.Parse(stream, cancellationToken);
+        IReadOnlyList<Invoice> invoices = await _csvParser.Parse(stream, cts.Token);
 
         VatDeclarationResult result = _vatCalculator.Calculate(invoices);
 
@@ -61,17 +71,22 @@ public sealed class VatDeclarationController(
     [HttpPost("upload-and-generate-pdf")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status408RequestTimeout)]
     public async Task<IActionResult> UploadCsvAndGeneratePdf(
             IFormFile file,
             CancellationToken cancellationToken
         )
     {
-        _logger.LogInformation("Processing CSV upload for PDF generation: {FileName}", file?.FileName);
+        string sanitizedFilename = SanitizeFilename(file?.FileName);
+        _logger.LogInformation("Processing CSV upload for PDF generation: {FileName}", sanitizedFilename);
 
         ValidateFile(file);
 
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(_fileUploadSettings.ProcessingTimeoutSeconds));
+
         await using Stream stream = file!.OpenReadStream();
-        IReadOnlyList<Invoice> invoices = await _csvParser.Parse(stream, cancellationToken);
+        IReadOnlyList<Invoice> invoices = await _csvParser.Parse(stream, cts.Token);
 
         VatDeclarationResult result = _vatCalculator.Calculate(invoices);
         byte[] pdfBytes = _pdfGenerator.GeneratePdf(result);
@@ -81,23 +96,33 @@ public sealed class VatDeclarationController(
         return File(pdfBytes, "application/pdf", "vat-declaration.pdf");
     }
 
-    private static void ValidateFile(IFormFile? file)
+    private void ValidateFile(IFormFile? file)
     {
         if (file == null || file.Length == 0)
         {
             throw new InvalidOperationException("No file uploaded or file is empty");
         }
 
-        if (file.Length > MaxFileSizeBytes)
+        if (file.Length > _fileUploadSettings.MaxFileSizeBytes)
         {
             throw new InvalidOperationException(
-                $"File size exceeds maximum allowed size of {MaxFileSizeBytes / 1024 / 1024} MB");
+                $"File size exceeds maximum allowed size of {_fileUploadSettings.MaxFileSizeBytes / 1024 / 1024} MB");
         }
 
-        if (!AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase) &&
-            !file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        if (!_fileUploadSettings.AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase) &&
+            !_fileUploadSettings.AllowedExtensions.Any(ext => file.FileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException("Only CSV files are allowed");
         }
+    }
+
+    private static string SanitizeFilename(string? filename)
+    {
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            return "unknown";
+        }
+
+        return new string([.. filename.Where(c => !char.IsControl(c))]);
     }
 }

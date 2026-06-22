@@ -5,8 +5,12 @@ namespace HungarianVatDeclarationGenerator.Api.Services;
 
 public sealed class CsvReaderFactory(CsvConfiguration configuration) : ICsvReaderFactory
 {
-    private readonly CsvConfiguration _configuration = configuration;
+    private readonly CsvConfiguration _configuration = configuration
+        ?? throw new ArgumentNullException(nameof(configuration));
 
     public CsvReader Create(StreamReader streamReader)
-        => new(streamReader, _configuration);
+    {
+        ArgumentNullException.ThrowIfNull(streamReader);
+        return new CsvReader(streamReader, _configuration);
+    }
 }

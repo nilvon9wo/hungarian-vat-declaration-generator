@@ -38,12 +38,16 @@
 	 ```csharp
 	 public record Invoice
 	 {
+		 [Required]
 		 public required string InvoiceNumber { get; init; }
+		 [Required]
 		 public required decimal NetAmount { get; init; }
 	 }
 	 ```
    - Use `{ get; init; }` not `{ get; set; }`
    - Mark properties as `required` when mandatory
+   - **ALWAYS use both `required` keyword AND `[Required]` attribute**
+   - Add validation attributes (`[Range]`, `[MinLength]`, etc.) where appropriate
 
 7. **No "Async" suffix on method names**
    - The return type (`Task`) and `async`/`await` keywords are sufficient
@@ -55,6 +59,26 @@
    - Use constructor injection for all services, factories, and configuration
    - Register all dependencies in `Program.cs`
    - Even configuration objects (like `CsvConfiguration`, `JsonSerializerOptions`) should be registered as singletons and injected
+   - **ALWAYS validate constructor parameters are not null:**
+	 ```csharp
+	 private readonly IService _service = service 
+		 ?? throw new ArgumentNullException(nameof(service));
+	 ```
+   - Use `ArgumentNullException.ThrowIfNull(parameter)` for method parameters
+
+9. **Configuration Models**
+   - Use both `required` keyword AND `[Required]` attribute on all mandatory properties
+   - Add appropriate validation attributes (`[Range]`, `[MinLength]`, etc.)
+   - Provide sensible defaults for optional properties
+   - Example:
+	 ```csharp
+	 public sealed class MySettings
+	 {
+		 [Required]
+		 [Range(1, int.MaxValue)]
+		 public required int MaxItems { get; init; } = 1000;
+	 }
+	 ```
 
 ### General Principles
 

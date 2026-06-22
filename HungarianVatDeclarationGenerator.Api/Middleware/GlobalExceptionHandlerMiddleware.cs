@@ -11,9 +11,12 @@ public sealed class GlobalExceptionHandlerMiddleware(
         IOptions<JsonOptions> jsonOptions
     )
 {
-    private readonly RequestDelegate _next = next;
-    private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger = logger;
-    private readonly JsonSerializerOptions _jsonOptions = jsonOptions.Value.SerializerOptions;
+    private readonly RequestDelegate _next = next
+        ?? throw new ArgumentNullException(nameof(next));
+    private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger = logger
+        ?? throw new ArgumentNullException(nameof(logger));
+    private readonly JsonSerializerOptions _jsonOptions = (jsonOptions
+        ?? throw new ArgumentNullException(nameof(jsonOptions))).Value.SerializerOptions;
 
     public async Task Invoke(HttpContext context)
     {
@@ -25,6 +28,14 @@ public sealed class GlobalExceptionHandlerMiddleware(
         {
             _logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
             await HandleException(context, HttpStatusCode.BadRequest, ex.Message);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Request cancelled or timed out");
+            await HandleException(
+                context,
+                HttpStatusCode.RequestTimeout,
+                "Request processing timed out. Please try again with a smaller file.");
         }
         catch (Exception ex)
         {

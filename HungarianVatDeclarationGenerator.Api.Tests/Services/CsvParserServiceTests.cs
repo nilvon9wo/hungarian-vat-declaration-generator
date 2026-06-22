@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using CsvHelper.Configuration;
+using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 using HungarianVatDeclarationGenerator.Api.Services;
 
@@ -20,7 +21,16 @@ public sealed class CsvParserServiceTests
             TrimOptions = TrimOptions.Trim
         };
         CsvReaderFactory csvReaderFactory = new(csvConfig);
-        _service = new CsvParserService(csvReaderFactory);
+
+        CsvParsingSettings settings = new()
+        {
+            MaxRowsToProcess = 10000,
+            MaxInvoiceNumberLength = 100,
+            MaxFieldLength = 500,
+            MaxErrorsToDisplay = 5
+        };
+
+        _service = new CsvParserService(csvReaderFactory, settings);
     }
 
     [Fact]
