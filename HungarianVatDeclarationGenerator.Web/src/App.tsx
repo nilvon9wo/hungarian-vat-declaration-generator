@@ -1,122 +1,101 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, type ChangeEvent, type SubmitEvent } from 'react';
+import type { VatDeclarationResult } from './types/api';
+import { uploadCsvFile, downloadPdf } from './services/api';
+import { UploadForm } from './components/UploadForm';
+import { VatResults } from './components/VatResults';
+import { triggerBrowserDownload } from './utils/download';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<VatDeclarationResult | null>(null);
+
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (validateFileSelection()) {
+      await processUpload();
+    }
+  }
+
+  async function handleDownloadPdf(): Promise<void> {
+    setIsLoading(true);
+    setError(null);
+
+    await processPdfDownload();
+
+    setIsLoading(false);
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="vat-app">
+      <header className="vat-app__header">
+        <h1 className="vat-app__title">Hungarian VAT Declaration Generator</h1>
+      </header>
 
-      <div className="ticks"></div>
+      <main className="vat-app__main">
+        <UploadForm
+          selectedFile={selectedFile}
+          isLoading={isLoading}
+          error={error}
+          onFileChange={handleFileChange}
+          onSubmit={handleSubmit}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {result && <VatResults result={result} isLoading={isLoading} onDownloadPdf={handleDownloadPdf} />}
+      </main>
+    </div>
+  );
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
+    const file: File | null = event.target.files?.[0] || null;
+    setSelectedFile(file);
+    clearResults();
+  }
+
+  function clearResults(): void {
+    setError(null);
+    setResult(null);
+  }
+
+  function validateFileSelection(): boolean {
+    if (!selectedFile) {
+      setError('Please select a CSV file');
+      return false;
+    }
+    return true;
+  }
+
+  async function processUpload(): Promise<void> {
+    if (!selectedFile) return;
+
+    setIsLoading(true);
+    clearResults();
+
+    const uploadResult = await uploadCsvFile(selectedFile);
+
+    setIsLoading(false);
+
+    if (uploadResult.success && uploadResult.data) {
+      setResult(uploadResult.data);
+    } else {
+      setError(uploadResult.error || 'An unknown error occurred');
+    }
+  }
+
+  async function processPdfDownload(): Promise<void> {
+    if (!selectedFile) return;
+
+    try {
+      const blob: Blob = (await downloadPdf(selectedFile)) as Blob;
+      triggerBrowserDownload(blob, 'vat-declaration.pdf');
+    } catch (err: unknown) {
+      const errorMessage: string = err instanceof Error ? err.message : 'Failed to download PDF';
+      setError(errorMessage);
+    }
+  }
 }
 
-export default App
+export default App;
