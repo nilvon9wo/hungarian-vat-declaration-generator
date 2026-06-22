@@ -1,6 +1,8 @@
+using CsvHelper.Configuration;
 using HungarianVatDeclarationGenerator.Api.Middleware;
 using HungarianVatDeclarationGenerator.Api.Services;
 using Microsoft.AspNetCore.Http.Json;
+using System.Globalization;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,16 @@ services.Configure<JsonOptions>(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
+
+// Configure CSV Helper
+services.AddSingleton(_ => new CsvConfiguration(CultureInfo.InvariantCulture)
+{
+    HasHeaderRecord = true,
+    MissingFieldFound = null,
+    BadDataFound = null,
+    TrimOptions = TrimOptions.Trim
+});
+services.AddSingleton<ICsvReaderFactory, CsvReaderFactory>();
 
 // Add services
 services.AddControllers();

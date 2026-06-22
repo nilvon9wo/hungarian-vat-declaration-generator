@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using CsvHelper.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 using HungarianVatDeclarationGenerator.Api.Services;
 
@@ -6,7 +8,20 @@ namespace HungarianVatDeclarationGenerator.Api.Tests.Services;
 
 public sealed class CsvParserServiceTests
 {
-    private readonly CsvParserService _service = new();
+    private readonly CsvParserService _service;
+
+    public CsvParserServiceTests()
+    {
+        CsvConfiguration csvConfig = new(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            MissingFieldFound = null,
+            BadDataFound = null,
+            TrimOptions = TrimOptions.Trim
+        };
+        CsvReaderFactory csvReaderFactory = new(csvConfig);
+        _service = new CsvParserService(csvReaderFactory);
+    }
 
     [Fact]
     public async Task Parse_WithValidCsv_ReturnsInvoices()
@@ -173,7 +188,7 @@ public sealed class CsvParserServiceTests
         // Act & Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _service.Parse(stream));
-        Assert.Contains("Invalid net amount", ex.Message);
+        Assert.Contains("Invalid data format", ex.Message);
     }
 
     [Fact]
@@ -189,7 +204,7 @@ public sealed class CsvParserServiceTests
         // Act & Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _service.Parse(stream));
-        Assert.Contains("Expected 3 columns", ex.Message);
+        Assert.Contains("Invalid data format", ex.Message);
     }
 
     [Fact]

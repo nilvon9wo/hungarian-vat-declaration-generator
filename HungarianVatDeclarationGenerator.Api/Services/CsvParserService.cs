@@ -1,124 +1,132 @@
-using System.Globalization;
+using System.Runtime.CompilerServices;
+using CsvHelper;
 using HungarianVatDeclarationGenerator.Api.Constants;
 using HungarianVatDeclarationGenerator.Api.Models;
 
 namespace HungarianVatDeclarationGenerator.Api.Services;
 
-public sealed class CsvParserService : ICsvParserService
+/// <summary>
+/// Parses CSV files containing invoice data using CsvHelper.
+/// Strategy: Lenient parsing - skips invalid rows and collects errors.
+/// Only fails if the file is empty, unreadable, or contains zero valid invoices.
+/// </summary>
+public sealed class CsvParserService(ICsvReaderFactory csvReaderFactory) : ICsvParserService
 {
     private const int MaxRowsToProcess = 10000;
-    private static readonly string[] ExpectedHeaders = ["InvoiceNumber", "NetAmount", "VatRate"];
+    private readonly ICsvReaderFactory _csvReaderFactory = csvReaderFactory;
 
     public async Task<IReadOnlyList<Invoice>> Parse(Stream csvStream, CancellationToken cancellationToken = default)
     {
-        using StreamReader reader = new(csvStream);
-
-        string headerLine = await ReadAndValidateHeader(reader, cancellationToken);
-        IEnumerable<string> dataLines = await ReadDataLines(reader, cancellationToken);
-        IReadOnlyList<Invoice> invoices = ParseInvoices(dataLines);
-
-        ValidateHasInvoices(invoices);
-        return invoices;
-    }
-
-    private static async Task<string> ReadAndValidateHeader(StreamReader reader, CancellationToken cancellationToken)
-    {
-        string? headerLine = await reader.ReadLineAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(headerLine))
-            throw new InvalidOperationException("CSV file is empty or missing header row.");
-
-        ValidateHeaderColumns(headerLine);
-        return headerLine;
-    }
-
-    private static async Task<IEnumerable<string>> ReadDataLines(StreamReader reader, CancellationToken cancellationToken)
-    {
-        List<string> lines = [];
-        int lineNumber = 0;
-
-        while (lineNumber < MaxRowsToProcess)
+        try
         {
-            string? line = await reader.ReadLineAsync(cancellationToken);
-            if (line == null) break;
-            if (!string.IsNullOrWhiteSpace(line))
-                lines.Add(line);
-            lineNumber++;
+            return await ParseCsvStream(csvStream, cancellationToken);
+        }
+        catch (CsvHelper.HeaderValidationException ex)
+        {
+            throw new InvalidOperationException($"Invalid CSV header: {ex.Message}", ex);
+        }
+        catch (CsvHelper.TypeConversion.TypeConverterException ex)
+        {
+            throw new InvalidOperationException($"Invalid data format: {ex.Message}", ex);
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new InvalidOperationException("Failed to parse CSV file.", ex);
+        }
+    }
+
+    private async Task<IReadOnlyList<Invoice>> ParseCsvStream(Stream csvStream, CancellationToken cancellationToken)
+    {
+        using StreamReader reader = new(csvStream);
+        using CsvReader csv = _csvReaderFactory.Create(reader);
+
+        (List<Invoice> validInvoices, List<string> errors) = await CollectValidInvoices(csv, cancellationToken);
+        ThrowIfNoValidInvoices(validInvoices, errors);
+        return validInvoices;
+    }
+
+    private static async Task<(List<Invoice> validInvoices, List<string> errors)> CollectValidInvoices(
+        CsvReader csv,
+        CancellationToken cancellationToken)
+    {
+        List<Invoice> validInvoices = [];
+        List<string> errors = [];
+
+        await foreach (InvoiceCsvRecord? record in ReadRecords(csv, cancellationToken))
+        {
+            ProcessRecord(record, validInvoices, errors);
+            if (validInvoices.Count >= MaxRowsToProcess) break;
         }
 
-        return lines;
+        return (validInvoices, errors);
     }
 
-    private static IReadOnlyList<Invoice> ParseInvoices(IEnumerable<string> dataLines)
-        => [.. dataLines.Select((line, index) => ParseInvoiceLine(line, index + 2))];
-
-    private static void ValidateHeaderColumns(string headerLine)
+    private static void ProcessRecord(InvoiceCsvRecord? record, List<Invoice> validInvoices, List<string> errors)
     {
-        string[] actualHeaders = [.. headerLine.Split(',').Select(h => h.Trim())];
+        if (record == null) return;
 
-        if (actualHeaders.Length != ExpectedHeaders.Length)
-            throw new InvalidOperationException(
-                $"Invalid CSV header. Expected {ExpectedHeaders.Length} columns: {string.Join(", ", ExpectedHeaders)}");
-
-        var invalidColumn = actualHeaders
-            .Select((header, index) => new { header, expected = ExpectedHeaders[index], index })
-            .FirstOrDefault(x => !string.Equals(x.header, x.expected, StringComparison.OrdinalIgnoreCase));
-
-        if (invalidColumn != null)
-            throw new InvalidOperationException(
-                $"Invalid CSV header at column {invalidColumn.index + 1}. Expected '{invalidColumn.expected}', found '{invalidColumn.header}'");
-    }
-
-    private static Invoice ParseInvoiceLine(string line, int lineNumber)
-    {
-        string[] parts = SplitAndValidateColumns(line, lineNumber);
-        return new Invoice
+        string? validationError = ValidateRecord(record);
+        if (validationError != null)
         {
-            InvoiceNumber = ParseInvoiceNumber(parts[0], lineNumber),
-            NetAmount = ParseNetAmount(parts[1], lineNumber),
-            VatRate = ParseVatRate(parts[2], lineNumber)
+            errors.Add(validationError);
+            return;
+        }
+
+        validInvoices.Add(MapToInvoice(record));
+    }
+
+    private static async IAsyncEnumerable<InvoiceCsvRecord?> ReadRecords(
+        CsvReader csv,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        IAsyncEnumerable<InvoiceCsvRecord> records = csv.GetRecordsAsync<InvoiceCsvRecord>(cancellationToken);
+
+        await foreach (InvoiceCsvRecord record in records.WithCancellation(cancellationToken))
+        {
+            yield return record;
+        }
+    }
+
+    private static string? ValidateRecord(InvoiceCsvRecord record)
+    {
+        if (string.IsNullOrWhiteSpace(record.InvoiceNumber))
+            return $"Row {GetRowContext(record)}: Invoice number cannot be empty";
+
+        if (record.NetAmount <= 0)
+            return $"Row {GetRowContext(record)}: Net amount must be positive, got {record.NetAmount}";
+
+        if (!VatRates.IsValid(record.VatRate))
+            return $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {string.Join(", ", VatRates.Supported)}%";
+
+        return null;
+    }
+
+    private static string GetRowContext(InvoiceCsvRecord record)
+        => string.IsNullOrWhiteSpace(record.InvoiceNumber)
+            ? "(unknown)"
+            : record.InvoiceNumber;
+
+    private static Invoice MapToInvoice(InvoiceCsvRecord record)
+        => new()
+        {
+            InvoiceNumber = record.InvoiceNumber,
+            NetAmount = record.NetAmount,
+            VatRate = record.VatRate
         };
-    }
 
-    private static string[] SplitAndValidateColumns(string line, int lineNumber)
+    private static void ThrowIfNoValidInvoices(List<Invoice> validInvoices, List<string> errors)
     {
-        string[] parts = line.Split(',');
-        return parts.Length != 3
-            ? throw new InvalidOperationException($"Line {lineNumber}: Expected 3 columns, found {parts.Length}")
-            : parts;
-    }
+        if (validInvoices.Count == 0)
+        {
+            string errorMessage = errors.Count > 0
+                ? $"CSV file contains no valid invoice data. Errors found:\n{string.Join("\n", errors.Take(10))}"
+                : "CSV file is empty or contains no valid invoice data.";
 
-    private static string ParseInvoiceNumber(string value, int lineNumber)
-    {
-        string invoiceNumber = value.Trim();
-        return string.IsNullOrWhiteSpace(invoiceNumber)
-            ? throw new InvalidOperationException($"Line {lineNumber}: Invoice number cannot be empty")
-            : invoiceNumber;
-    }
-
-    private static decimal ParseNetAmount(string value, int lineNumber)
-    {
-        if (!decimal.TryParse(value.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal netAmount))
-            throw new InvalidOperationException($"Line {lineNumber}: Invalid net amount '{value}'");
-
-        return netAmount <= 0
-            ? throw new InvalidOperationException($"Line {lineNumber}: Net amount must be positive, got {netAmount}")
-            : netAmount;
-    }
-
-    private static int ParseVatRate(string value, int lineNumber)
-    {
-        if (!int.TryParse(value.Trim(), out int vatRate))
-            throw new InvalidOperationException($"Line {lineNumber}: Invalid VAT rate '{value}'");
-
-        return !VatRates.IsValid(vatRate)
-            ? throw new InvalidOperationException(
-                $"Line {lineNumber}: Invalid VAT rate {vatRate}%. Supported rates: {string.Join(", ", VatRates.Supported)}%")
-            : vatRate;
-    }
-
-    private static void ValidateHasInvoices(IReadOnlyList<Invoice> invoices)
-    {
-        if (invoices.Count == 0)
-            throw new InvalidOperationException("CSV file contains no valid invoice data.");
+            throw new InvalidOperationException(errorMessage);
+        }
     }
 }
