@@ -25,6 +25,7 @@ app.Run();
 
 static void ConfigureApplicationSettings(IServiceCollection services, IConfiguration configuration)
 {
+    services.ConfigureSettings<VatRateSettings>(configuration, VatRateSettings.SectionName);
     services.ConfigureSettings<FileUploadSettings>(configuration, FileUploadSettings.SectionName);
     services.ConfigureSettings<CsvParsingSettings>(configuration, CsvParsingSettings.SectionName);
 }

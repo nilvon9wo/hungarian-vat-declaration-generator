@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using CsvHelper;
 using HungarianVatDeclarationGenerator.Api.Configuration;
-using HungarianVatDeclarationGenerator.Api.Constants;
 using HungarianVatDeclarationGenerator.Api.Models;
 
 namespace HungarianVatDeclarationGenerator.Api.Services;
@@ -13,13 +12,16 @@ namespace HungarianVatDeclarationGenerator.Api.Services;
 /// </summary>
 public sealed class CsvParserService(
     ICsvReaderFactory csvReaderFactory,
-    CsvParsingSettings csvParsingSettings
+    CsvParsingSettings csvParsingSettings,
+    VatRateSettings vatRateSettings
 ) : ICsvParserService
 {
     private readonly ICsvReaderFactory _csvReaderFactory = csvReaderFactory
         ?? throw new ArgumentNullException(nameof(csvReaderFactory));
     private readonly CsvParsingSettings _settings = csvParsingSettings
         ?? throw new ArgumentNullException(nameof(csvParsingSettings));
+    private readonly VatRateSettings _vatRateSettings = vatRateSettings
+        ?? throw new ArgumentNullException(nameof(vatRateSettings));
 
     public async Task<IReadOnlyList<Invoice>> Parse(Stream csvStream, CancellationToken cancellationToken = default)
     {
@@ -115,8 +117,8 @@ public sealed class CsvParserService(
         if (record.NetAmount > decimal.MaxValue / 2)
             return $"Row {GetRowContext(record)}: Net amount exceeds maximum allowed value";
 
-        if (!VatRates.IsValid(record.VatRate))
-            return $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {string.Join(", ", VatRates.Supported)}%";
+        if (!_vatRateSettings.IsValid(record.VatRate))
+            return $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {_vatRateSettings.GetSupportedRatesDisplay()}%";
 
         return null;
     }

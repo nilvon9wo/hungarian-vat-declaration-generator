@@ -30,7 +30,12 @@ public sealed class CsvParserServiceTests
             MaxErrorsToDisplay = 5
         };
 
-        _service = new CsvParserService(csvReaderFactory, settings);
+        VatRateSettings vatRateSettings = new()
+        {
+            SupportedRates = [5, 18, 27]
+        };
+
+        _service = new CsvParserService(csvReaderFactory, settings, vatRateSettings);
     }
 
     [Fact]
@@ -254,6 +259,48 @@ public sealed class CsvParserServiceTests
         Assert.Equal("INV-001", invoices[0].InvoiceNumber);
         Assert.Equal(10000m, invoices[0].NetAmount);
         Assert.Equal(27, invoices[0].VatRate);
+    }
+
+    [Fact]
+    public async Task Parse_WithCustomVatRates_RespectsConfiguredRates()
+    {
+        // Arrange
+        CsvConfiguration csvConfig = new(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            MissingFieldFound = null,
+            BadDataFound = null,
+            TrimOptions = TrimOptions.Trim
+        };
+        CsvReaderFactory csvReaderFactory = new(csvConfig);
+        CsvParsingSettings settings = new()
+        {
+            MaxRowsToProcess = 10000,
+            MaxInvoiceNumberLength = 100,
+            MaxFieldLength = 500,
+            MaxErrorsToDisplay = 5
+        };
+        VatRateSettings customVatRateSettings = new()
+        {
+            SupportedRates = [10, 20]
+        };
+        CsvParserService customService = new(csvReaderFactory, settings, customVatRateSettings);
+
+        string csv = """
+            InvoiceNumber,NetAmount,VatRate
+            INV-001,10000,27
+            INV-002,5000,18
+            """;
+        MemoryStream stream = CreateStream(csv);
+
+        // Act
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => customService.Parse(stream));
+
+        // Assert
+        Assert.Contains("no valid invoice data", exception.Message);
+        Assert.Contains("Invalid VAT rate 27%", exception.Message);
+        Assert.Contains("Supported rates: 10, 20", exception.Message);
     }
 
     private static MemoryStream CreateStream(string content)

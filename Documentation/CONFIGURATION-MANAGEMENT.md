@@ -7,7 +7,36 @@ Converted magic numbers and hardcoded values to configuration-based settings, en
 
 ## Configuration Models Created
 
-### 1. **FileUploadSettings.cs**
+### 1. **VatRateSettings.cs**
+Location: `HungarianVatDeclarationGenerator.Api/Configuration/VatRateSettings.cs`
+
+```csharp
+public sealed class VatRateSettings
+{
+	public const string SectionName = "VatRates";
+
+	[Required]
+	[MinLength(1)]
+	public required int[] SupportedRates { get; init; }
+
+	public bool IsValid(int rate) => SupportedRates.Contains(rate);
+	public string GetSupportedRatesDisplay() => string.Join(", ", SupportedRates);
+}
+```
+
+**Purpose:** Controls which VAT rates are considered valid for invoice processing.
+
+**Settings:**
+- `SupportedRates` - Array of valid VAT percentages (e.g., [5, 18, 27] for Hungary)
+
+**Validation:**
+- Unsupported VAT rates in uploaded CSV files are treated as validation errors
+- Errors are handled by the global exception middleware and returned as 400 Bad Request
+- Error messages include the list of supported rates for user guidance
+
+---
+
+### 2. **FileUploadSettings.cs**
 Location: `HungarianVatDeclarationGenerator.Api/Configuration/FileUploadSettings.cs`
 
 ```csharp
@@ -32,7 +61,7 @@ public sealed class FileUploadSettings
 
 ---
 
-### 2. **CsvParsingSettings.cs**
+### 3. **CsvParsingSettings.cs**
 Location: `HungarianVatDeclarationGenerator.Api/Configuration/CsvParsingSettings.cs`
 
 ```csharp
@@ -62,6 +91,9 @@ public sealed class CsvParsingSettings
 ### **appsettings.json** (Development)
 ```json
 {
+  "VatRates": {
+	"SupportedRates": [ 5, 18, 27 ]
+  },
   "FileUpload": {
 	"MaxFileSizeBytes": 5242880,              // 5 MB
 	"ProcessingTimeoutSeconds": 30,
@@ -89,6 +121,9 @@ public sealed class CsvParsingSettings
 ### **appsettings.Production.json** (Production)
 ```json
 {
+  "VatRates": {
+	"SupportedRates": [ 5, 18, 27 ]
+  },
   "FileUpload": {
 	"MaxFileSizeBytes": 10485760,             // 10 MB
 	"ProcessingTimeoutSeconds": 60,           // 60 seconds
