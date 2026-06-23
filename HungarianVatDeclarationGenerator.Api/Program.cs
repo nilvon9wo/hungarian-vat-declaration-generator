@@ -263,8 +263,25 @@ static void ConfigureHttpPipeline(WebApplication app)
     app.UseIpRateLimiting();
     app.UseHttpsRedirection();
     app.UseCors("AllowFrontend");
+
+    app.Use(async (context, next) =>
+    {
+        if (IsSwaggerPath(context.Request.Path))
+        {
+            context.Items["SkipApiKeyAuth"] = true;
+        }
+        await next();
+    });
+
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
 }
 
+static bool IsSwaggerPath(PathString path)
+{
+    string pathValue = path.Value ?? string.Empty;
+    return pathValue.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase)
+        || pathValue.Equals("/", StringComparison.OrdinalIgnoreCase)
+        || pathValue.Equals(string.Empty, StringComparison.OrdinalIgnoreCase);
+}

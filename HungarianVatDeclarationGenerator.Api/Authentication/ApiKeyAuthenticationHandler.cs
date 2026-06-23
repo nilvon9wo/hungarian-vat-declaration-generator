@@ -15,6 +15,11 @@ public sealed class ApiKeyAuthenticationHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        if (Request.HttpContext.Items.TryGetValue("SkipApiKeyAuth", out _))
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
         string headerName = Options.HeaderName;
 
         if (!Request.Headers.TryGetValue(headerName, out var apiKeyHeaderValues))
