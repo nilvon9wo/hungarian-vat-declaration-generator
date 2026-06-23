@@ -232,30 +232,11 @@ static void ConfigureMiddleware(WebApplication app)
 
 static void ConfigureDevelopmentFeatures(WebApplication app)
 {
-    string? swaggerEnvValue = app.Configuration["EnableSwaggerInProduction"];
-    bool enableSwagger = ParseBoolFromConfig(swaggerEnvValue);
-
-    // DEBUG: Log to see what's happening
-    Console.WriteLine($"[STARTUP] Environment: {app.Environment.EnvironmentName}");
-    Console.WriteLine($"[STARTUP] EnableSwaggerInProduction env var: '{swaggerEnvValue}'");
-    Console.WriteLine($"[STARTUP] Parsed enableSwagger: {enableSwagger}");
-
+    bool enableSwagger = app.Configuration.GetValue<bool>("Swagger:EnableInProduction", false);
     if (app.Environment.IsDevelopment() || enableSwagger)
     {
-        Console.WriteLine("[STARTUP] Configuring Swagger...");
         ConfigureSwagger(app);
     }
-    else
-    {
-        Console.WriteLine("[STARTUP] Swagger is disabled");
-    }
-}
-
-static bool ParseBoolFromConfig(string? value)
-{
-    return !string.IsNullOrWhiteSpace(value) && (value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
-        || value.Trim()
-            .Equals("1", StringComparison.OrdinalIgnoreCase));
 }
 
 static void ConfigureSwagger(WebApplication app)
