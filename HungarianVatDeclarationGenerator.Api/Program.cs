@@ -232,7 +232,9 @@ static void ConfigureMiddleware(WebApplication app)
 
 static void ConfigureDevelopmentFeatures(WebApplication app)
 {
-    if (app.Environment.IsDevelopment())
+    bool enableSwagger = app.Configuration.GetValue<bool>("EnableSwaggerInProduction", false);
+
+    if (app.Environment.IsDevelopment() || enableSwagger)
     {
         ConfigureSwagger(app);
     }
