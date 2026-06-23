@@ -1,6 +1,6 @@
-import { useState, type ChangeEvent, type SubmitEvent } from 'react';
-import type { VatDeclarationResult } from './types/api';
-import { uploadCsvFile, downloadPdf } from './services/api';
+import { useState, useEffect, type ChangeEvent, type SubmitEvent } from 'react';
+import type { VatDeclarationResult, ClientConfig } from './types/api';
+import { uploadCsvFile, downloadPdf, fetchConfig } from './services/api';
 import { UploadForm } from './components/UploadForm';
 import { VatResults } from './components/VatResults';
 import { triggerBrowserDownload } from './utils/download';
@@ -11,6 +11,21 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<VatDeclarationResult | null>(null);
+  const [config, setConfig] = useState<ClientConfig | null>(null);
+
+  useEffect(() => {
+    async function loadConfig(): Promise<void> {
+      try {
+        const clientConfig: ClientConfig = await fetchConfig();
+        setConfig(clientConfig);
+      } catch (err: unknown) {
+        const errorMessage: string = err instanceof Error ? err.message : 'Failed to load configuration';
+        setError(`Configuration error: ${errorMessage}`);
+      }
+    }
+
+    loadConfig();
+  }, []);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,8 +66,40 @@ function App() {
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
     const file: File | null = event.target.files?.[0] || null;
+
+    if (file) {
+      const validationError: string | null = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        setSelectedFile(null);
+        event.target.value = '';
+        return;
+      }
+    }
+
     setSelectedFile(file);
     clearResults();
+  }
+
+  function validateFile(file: File): string | null {
+    if (!config) {
+      return 'Configuration not loaded. Please refresh the page.';
+    }
+
+    if (file.size > config.maxFileSizeBytes) {
+      const maxSizeMB: number = config.maxFileSizeBytes / (1024 * 1024);
+      return `File size exceeds ${maxSizeMB}MB limit`;
+    }
+
+    const hasValidExtension: boolean = config.allowedExtensions.some(ext =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+
+    if (!hasValidExtension && !file.type.includes('csv')) {
+      return 'Please select a CSV file';
+    }
+
+    return null;
   }
 
   function clearResults(): void {

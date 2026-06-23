@@ -131,15 +131,22 @@ The format was assumed due to lack of specification and documented accordingly.
 
 ---
 
-### 3. No Authentication
+### 3. Demo-Only API Key Authentication
 
-Authentication (JWT, login, users) was intentionally omitted because:
+A simple API key authentication scheme is implemented for demonstration purposes:
 
-- The application does not store user-specific data
-- There are no roles or permissions defined in the requirements
-- The system behaves as a single-purpose transformation service
+- **Header:** `X-API-Key`
+- **Demo value:** `challenge-demo-key-2024`
 
-Security focus instead shifted to input validation, file handling safety, and API hardening.
+This is **intentionally minimal** for the coding challenge context. Real production systems should use:
+- JWT tokens with Azure AD, Auth0, or similar
+- Secret management (Azure Key Vault, AWS Secrets Manager)
+- Claims-based authorization
+- Proper RBAC and user management
+
+The `/api/Config` endpoint is intentionally public (no auth required) because it only exposes non-sensitive configuration data needed by the frontend before user interaction.
+
+See **[USING_THE_API.md](USING_THE_API.md)** for complete authentication details and examples.
 
 ---
 
@@ -192,12 +199,33 @@ dotnet test
 
 ---
 
+## API Authentication
+
+⚠️ **Demo-only API key authentication is implemented.** See **[USING_THE_API.md](USING_THE_API.md)** for complete details.
+
+**Quick reference:**
+- Header: `X-API-Key`
+- Value: `challenge-demo-key-2024`
+- Public endpoint: `/api/Config` (no auth required)
+- Protected endpoints: `/api/VatDeclaration/*` (auth required)
+
+---
+
 ## API Endpoints
+
+### Get Configuration (Public)
+
+```http
+GET /api/Config
+```
+
+Returns upload limits and allowed file types. **No authentication required.**
 
 ### Generate VAT Summary
 
 ```http
-POST /api/report
+POST /api/VatDeclaration/upload
+Header: X-API-Key: challenge-demo-key-2024
 ```
 
 Accepts a CSV file upload and returns a structured VAT summary.
@@ -205,7 +233,8 @@ Accepts a CSV file upload and returns a structured VAT summary.
 ### Generate PDF Report
 
 ```http
-POST /api/report/pdf
+POST /api/VatDeclaration/upload-and-generate-pdf
+Header: X-API-Key: challenge-demo-key-2024
 ```
 
 Accepts a CSV file upload and returns a PDF document.

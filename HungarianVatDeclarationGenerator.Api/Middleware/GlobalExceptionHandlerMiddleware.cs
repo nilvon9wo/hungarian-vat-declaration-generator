@@ -8,7 +8,8 @@ namespace HungarianVatDeclarationGenerator.Api.Middleware;
 public sealed class GlobalExceptionHandlerMiddleware(
         RequestDelegate next,
         ILogger<GlobalExceptionHandlerMiddleware> logger,
-        IOptions<JsonOptions> jsonOptions
+        IOptions<JsonOptions> jsonOptions,
+        IWebHostEnvironment environment
     )
 {
     private readonly RequestDelegate _next = next
@@ -17,6 +18,8 @@ public sealed class GlobalExceptionHandlerMiddleware(
         ?? throw new ArgumentNullException(nameof(logger));
     private readonly JsonSerializerOptions _jsonOptions = (jsonOptions
         ?? throw new ArgumentNullException(nameof(jsonOptions))).Value.SerializerOptions;
+    private readonly IWebHostEnvironment _environment = environment
+        ?? throw new ArgumentNullException(nameof(environment));
 
     public async Task Invoke(HttpContext context)
     {
@@ -27,7 +30,12 @@ public sealed class GlobalExceptionHandlerMiddleware(
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
-            await HandleException(context, HttpStatusCode.BadRequest, ex.Message);
+
+            string publicMessage = _environment.IsProduction()
+                ? "Invalid request. Please check your input and try again."
+                : ex.Message;
+
+            await HandleException(context, HttpStatusCode.BadRequest, publicMessage);
         }
         catch (OperationCanceledException ex)
         {

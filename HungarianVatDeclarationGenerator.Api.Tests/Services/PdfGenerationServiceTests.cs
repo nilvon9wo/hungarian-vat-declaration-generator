@@ -133,16 +133,10 @@ public sealed class PdfGenerationServiceTests
     /// 
     /// Example: A valid PDF starts with: %PDF-1.7 (where %PDF is always present)
     /// </remarks>
-    private static bool IsPdfFile(byte[] bytes)
-    {
-        if (bytes.Length < 4)
-        {
-            return false;
-        }
-
-        return bytes[0] == 0x25 &&
+    private static bool IsPdfFile(byte[] bytes) => bytes.Length < 4
+            ? false
+            : bytes[0] == 0x25 &&
                bytes[1] == 0x50 &&
                bytes[2] == 0x44 &&
                bytes[3] == 0x46;
-    }
 }

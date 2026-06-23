@@ -17,3 +17,9 @@ export interface VatDeclarationResult {
 export interface ApiError {
   error: string;
 }
+
+export interface ClientConfig {
+  maxFileSizeBytes: number;
+  allowedExtensions: string[];
+  requestTimeoutSeconds: number;
+}

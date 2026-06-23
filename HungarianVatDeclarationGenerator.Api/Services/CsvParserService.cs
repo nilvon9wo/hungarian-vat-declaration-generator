@@ -117,10 +117,9 @@ public sealed class CsvParserService(
         if (record.NetAmount > decimal.MaxValue / 2)
             return $"Row {GetRowContext(record)}: Net amount exceeds maximum allowed value";
 
-        if (!_vatRateSettings.IsValid(record.VatRate))
-            return $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {_vatRateSettings.GetSupportedRatesDisplay()}%";
-
-        return null;
+        return !_vatRateSettings.IsValid(record.VatRate)
+            ? $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {_vatRateSettings.GetSupportedRatesDisplay()}%"
+            : null;
     }
 
     private static string GetRowContext(InvoiceCsvRecord record)
@@ -134,10 +133,18 @@ public sealed class CsvParserService(
     private static Invoice MapToInvoice(InvoiceCsvRecord record)
         => new()
         {
-            InvoiceNumber = record.InvoiceNumber.Trim(),
+            InvoiceNumber = SanitizeForCsvInjection(record.InvoiceNumber.Trim()),
             NetAmount = record.NetAmount,
             VatRate = record.VatRate
         };
+
+    private static string SanitizeForCsvInjection(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+
+        char firstChar = value[0];
+        return firstChar is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + value : value;
+    }
 
     private void ThrowIfNoValidInvoices(List<Invoice> validInvoices, List<string> errors)
     {

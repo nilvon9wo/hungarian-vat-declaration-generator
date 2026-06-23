@@ -1,17 +1,18 @@
 using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 using HungarianVatDeclarationGenerator.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HungarianVatDeclarationGenerator.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public sealed class VatDeclarationController(
     ICsvParserService csvParser,
     IVatCalculationService vatCalculator,
     IPdfGenerationService pdfGenerator,
-    ILogger<VatDeclarationController> logger,
     FileUploadSettings fileUploadSettings
 ) : ControllerBase
 {
@@ -21,8 +22,6 @@ public sealed class VatDeclarationController(
         ?? throw new ArgumentNullException(nameof(vatCalculator));
     private readonly IPdfGenerationService _pdfGenerator = pdfGenerator
         ?? throw new ArgumentNullException(nameof(pdfGenerator));
-    private readonly ILogger<VatDeclarationController> _logger = logger
-        ?? throw new ArgumentNullException(nameof(logger));
     private readonly FileUploadSettings _fileUploadSettings = fileUploadSettings
         ?? throw new ArgumentNullException(nameof(fileUploadSettings));
 
@@ -41,9 +40,6 @@ public sealed class VatDeclarationController(
             CancellationToken cancellationToken
         )
     {
-        string sanitizedFilename = SanitizeFilename(file?.FileName);
-        _logger.LogInformation("Processing CSV upload: {FileName}", sanitizedFilename);
-
         ValidateFile(file);
 
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -53,12 +49,6 @@ public sealed class VatDeclarationController(
         IReadOnlyList<Invoice> invoices = await _csvParser.Parse(stream, cts.Token);
 
         VatDeclarationResult result = _vatCalculator.Calculate(invoices);
-
-        _logger.LogInformation(
-            "Successfully processed {InvoiceCount} invoices with total gross amount {GrossAmount:C}",
-            result.TotalInvoiceCount,
-            result.GrandTotalGross);
-
         return Ok(result);
     }
 
@@ -77,9 +67,6 @@ public sealed class VatDeclarationController(
             CancellationToken cancellationToken
         )
     {
-        string sanitizedFilename = SanitizeFilename(file?.FileName);
-        _logger.LogInformation("Processing CSV upload for PDF generation: {FileName}", sanitizedFilename);
-
         ValidateFile(file);
 
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -90,9 +77,6 @@ public sealed class VatDeclarationController(
 
         VatDeclarationResult result = _vatCalculator.Calculate(invoices);
         byte[] pdfBytes = _pdfGenerator.GeneratePdf(result);
-
-        _logger.LogInformation("Generated PDF report for {InvoiceCount} invoices", result.TotalInvoiceCount);
-
         return File(pdfBytes, "application/pdf", "vat-declaration.pdf");
     }
 
@@ -109,20 +93,33 @@ public sealed class VatDeclarationController(
                 $"File size exceeds maximum allowed size of {_fileUploadSettings.MaxFileSizeBytes / 1024 / 1024} MB");
         }
 
-        if (!_fileUploadSettings.AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase) &&
-            !_fileUploadSettings.AllowedExtensions.Any(ext => file.FileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+        string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!_fileUploadSettings.AllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Only CSV files are allowed");
         }
+
+        ValidateFileContent(file);
     }
 
-    private static string SanitizeFilename(string? filename)
+    private static void ValidateFileContent(IFormFile file)
     {
-        if (string.IsNullOrWhiteSpace(filename))
+        using Stream stream = file.OpenReadStream();
+        Span<byte> buffer = stackalloc byte[3];
+        int bytesRead = stream.Read(buffer);
+        stream.Position = 0;
+
+        if (bytesRead == 0)
         {
-            return "unknown";
+            throw new InvalidOperationException("Uploaded file is empty");
         }
 
-        return new string([.. filename.Where(c => !char.IsControl(c))]);
+        bool isValidCsv = (buffer[0] == 0xEF && bytesRead >= 3 && buffer[1] == 0xBB && buffer[2] == 0xBF) ||
+                          (buffer[0] < 0x80);
+
+        if (!isValidCsv)
+        {
+            throw new InvalidOperationException("Uploaded file does not appear to be a valid CSV file");
+        }
     }
 }

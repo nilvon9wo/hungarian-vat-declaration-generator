@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import * as api from './services/api';
+import type { ClientConfig } from './types/api';
 
 vi.mock('./services/api');
 
@@ -29,17 +30,26 @@ const UI_DOWNLOAD_PDF_TEXT: string = 'Download PDF Report';
 const UI_PROCESSING_TEXT: string = 'Processing...';
 const UI_CURRENCY_SUFFIX: RegExp = /Ft/i;
 
+const MOCK_CONFIG: ClientConfig = {
+  maxFileSizeBytes: 5242880,
+  allowedExtensions: ['.csv'],
+  requestTimeoutSeconds: 30
+};
+
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(api.fetchConfig).mockResolvedValue(MOCK_CONFIG);
   });
 
-  it('should render the upload form', () => {
+  it('should render the upload form', async () => {
     // Act
     render(<App />);
 
     // Assert
-    expect(screen.getByText(UI_TITLE_TEXT)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(UI_TITLE_TEXT)).toBeInTheDocument();
+    });
     expect(screen.getByLabelText(UI_FILE_INPUT_LABEL)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: UI_SUBMIT_BUTTON_TEXT })).toBeInTheDocument();
   });
