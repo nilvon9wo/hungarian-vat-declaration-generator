@@ -1,6 +1,6 @@
 import type { VatDeclarationResult, ApiError, ClientConfig } from '../types/api';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const REQUEST_TIMEOUT_MS = 60000;
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
