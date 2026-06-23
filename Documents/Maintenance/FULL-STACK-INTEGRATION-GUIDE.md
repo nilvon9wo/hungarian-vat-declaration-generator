@@ -489,7 +489,7 @@ Your full stack is working correctly when:
 
 1. ΓƒÜ Backend tests pass (22/22)
 2. ΓƒÜ Frontend tests pass (20/20)
-3. ΓƒÜ Swagger UI loads at `https://localhost:5001/swagger`
+3. ΓƒÜ Swagger UI loads at `https://localhost:7122`
 4. ΓƒÜ Frontend UI loads at `http://localhost:5173`
 5. ΓƒÜ CSV upload returns VAT summary within 1-2 seconds
 6. ΓƒÜ Results table displays with correct currency formatting
@@ -503,7 +503,7 @@ Your full stack is working correctly when:
 ## Support Resources
 
 - **Backend Documentation**: `CONFIGURATION-MANAGEMENT.md`, `SECURITY-REVIEW.md`
-- **Frontend Documentation**: `FRONTEND-README.md`, `FRONTEND-IMPLEMENTATION-SUMMARY.md`
+- **Frontend Documentation**: `HungarianVatDeclarationGenerator.Web/README.md`
 - **Copilot Instructions**: `.github/copilot-instructions.md`
 - **API Documentation**: Swagger UI at `https://localhost:7122/`
 
