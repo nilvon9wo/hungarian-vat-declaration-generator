@@ -1,6 +1,9 @@
-# AI Starter Prompt Kit for Coding Challenges
+# Selected Prompts from Coding Challenges
 
 This document contains a collection of prompts designed to guide AI assistants through building a production-quality coding challenge project with best practices and appropriate scope.
+
+The initial prompts were created as prework, but some additional noteworthy prompts are included here.
+In addition to the prompts, there are also notes of how the AI responded.
 
 ---
 

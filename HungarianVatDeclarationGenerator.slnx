@@ -1,4 +1,13 @@
 <Solution>
+  <Folder Name="/Documents/">
+    <File Path="Documents/AI-Assisted/Logs/Log1_chatgpt _hungarian_vat_conversation.md" />
+    <File Path="Log2_ chatgpt_visualstudio_setup.md" />
+    <File Path="Log3_ClaudeSonnet5_coding_challenge_help.md" />
+    <File Path="Log4_ClaudeSonnet5_ tsconfig_errors_fix.md" />
+    <File Path="Log5_GitHubCopilot_code_review.md" />
+    <File Path="Log6_RailwayAgent_Deployment.md" />
+    <File Path="log7_copilot_auto_production_deployment_fixes.md" />
+  </Folder>
   <Folder Name="/HungarianVatDeclarationGenerator.Web/">
     <File Path="HungarianVatDeclarationGenerator.Web/.gitignore" />
     <File Path="HungarianVatDeclarationGenerator.Web/eslint.config.js" />
