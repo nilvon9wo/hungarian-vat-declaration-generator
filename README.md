@@ -146,7 +146,7 @@ This is **intentionally minimal** for the coding challenge context. Real product
 
 The `/api/Config` endpoint is intentionally public (no auth required) because it only exposes non-sensitive configuration data needed by the frontend before user interaction.
 
-See **[USING_THE_API.md](USING_THE_API.md)** for complete authentication details and examples.
+See **[Documents/UserGuide/USING_THE_API.md](Documents/UserGuide/USING_THE_API.md)** for complete authentication details and examples.
 
 ---
 
@@ -261,13 +261,17 @@ dotnet restore
 dotnet run --project HungarianVatDeclarationGenerator.Api
 ```
 
+Swagger and the local HTTPS backend are available at `https://localhost:7122`.
+
 ### Frontend
 
 ```bash
-cd frontend
+cd HungarianVatDeclarationGenerator.Web
 npm install
 npm run dev
 ```
+
+The local frontend UI runs at `http://localhost:5173`.
 
 ---
 
@@ -281,7 +285,7 @@ dotnet test
 
 ## API Authentication
 
-⚠️ **Demo-only API key authentication is implemented.** See **[USING_THE_API.md](USING_THE_API.md)** for complete details.
+⚠️ **Demo-only API key authentication is implemented.** See **[Documents/UserGuide/USING_THE_API.md](Documents/UserGuide/USING_THE_API.md)** for complete details.
 
 **Quick reference:**
 - Header: `X-API-Key`

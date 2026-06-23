@@ -159,7 +159,7 @@ Returns upload constraints and allowed file types for frontend.
 Uploads a CSV and returns JSON summary.
 
 **Steps:**
-1. Open http://localhost:5247 in your browser
+1. Open https://localhost:7122 in your browser
 2. Click on `POST /api/VatDeclaration/upload`
 3. Click "Try it out"
 4. Click "Choose File" and upload `HungarianVatDeclarationGenerator.Api/TestData/sample-invoices.csv`
