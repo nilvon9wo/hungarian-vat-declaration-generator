@@ -261,6 +261,8 @@ dotnet restore
 dotnet run --project HungarianVatDeclarationGenerator.Api
 ```
 
+Swagger and the local HTTPS backend are available at `https://localhost:7122`.
+
 ### Frontend
 
 ```bash
@@ -268,6 +270,8 @@ cd HungarianVatDeclarationGenerator.Web
 npm install
 npm run dev
 ```
+
+The local frontend UI runs at `http://localhost:5173`.
 
 ---
 
