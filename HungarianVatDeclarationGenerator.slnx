@@ -5,7 +5,6 @@
     <File Path="HungarianVatDeclarationGenerator.Web/index.html" />
     <File Path="HungarianVatDeclarationGenerator.Web/package-lock.json" />
     <File Path="HungarianVatDeclarationGenerator.Web/package.json" />
-    <File Path="HungarianVatDeclarationGenerator.Web/README.md" />
     <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.app.json" />
     <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.json" />
     <File Path="HungarianVatDeclarationGenerator.Web/tsconfig.node.json" />

@@ -97,6 +97,7 @@ public sealed class VatCalculationServiceTests
 
         // Assert
         Assert.Equal(3, result.SummariesByVatRate.Count);
+        AssertVatRatesAreUnique(result.SummariesByVatRate);
 
         VatSummary vat5 = result.SummariesByVatRate.First(s => s.VatRate == REDUCED_HUNGARIAN_VAT_RATE);
         Assert.Equal(vat5GroupNet, vat5.TotalNetAmount);
@@ -158,4 +159,10 @@ public sealed class VatCalculationServiceTests
 
     private static decimal CalculateGross(decimal netAmount, int vatRate) =>
         netAmount + CalculateVat(netAmount, vatRate);
+
+    private static void AssertVatRatesAreUnique(IReadOnlyList<VatSummary> summaries)
+    {
+        int uniqueRates = summaries.Select(summary => summary.VatRate).Distinct().Count();
+        Assert.Equal(summaries.Count, uniqueRates);
+    }
 }
