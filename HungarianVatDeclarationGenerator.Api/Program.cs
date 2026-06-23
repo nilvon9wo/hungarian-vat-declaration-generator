@@ -232,12 +232,20 @@ static void ConfigureMiddleware(WebApplication app)
 
 static void ConfigureDevelopmentFeatures(WebApplication app)
 {
-    bool enableSwagger = app.Configuration.GetValue<bool>("EnableSwaggerInProduction", false);
+    string? swaggerEnvValue = app.Configuration["EnableSwaggerInProduction"];
+    bool enableSwagger = ParseBoolFromConfig(swaggerEnvValue);
 
     if (app.Environment.IsDevelopment() || enableSwagger)
     {
         ConfigureSwagger(app);
     }
+}
+
+static bool ParseBoolFromConfig(string? value)
+{
+    return !string.IsNullOrWhiteSpace(value) && (value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
+        || value.Trim()
+            .Equals("1", StringComparison.OrdinalIgnoreCase));
 }
 
 static void ConfigureSwagger(WebApplication app)

@@ -104,23 +104,17 @@ public sealed class CsvParserService(
     }
 
     private string? ValidateRecord(InvoiceCsvRecord record)
-    {
-        if (string.IsNullOrWhiteSpace(record.InvoiceNumber))
-            return $"Row {GetRowContext(record)}: Invoice number cannot be empty";
-
-        if (record.InvoiceNumber.Length > _settings.MaxInvoiceNumberLength)
-            return $"Row {GetRowContext(record)}: Invoice number too long (max {_settings.MaxInvoiceNumberLength} characters)";
-
-        if (record.NetAmount <= 0)
-            return $"Row {GetRowContext(record)}: Net amount must be positive, got {record.NetAmount}";
-
-        if (record.NetAmount > decimal.MaxValue / 2)
-            return $"Row {GetRowContext(record)}: Net amount exceeds maximum allowed value";
-
-        return !_vatRateSettings.IsValid(record.VatRate)
-            ? $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {_vatRateSettings.GetSupportedRatesDisplay()}%"
-            : null;
-    }
+        => string.IsNullOrWhiteSpace(record.InvoiceNumber)
+            ? $"Row {GetRowContext(record)}: Invoice number cannot be empty"
+            : record.InvoiceNumber.Length > _settings.MaxInvoiceNumberLength
+                ? $"Row {GetRowContext(record)}: Invoice number too long (max {_settings.MaxInvoiceNumberLength} characters)"
+                : record.NetAmount <= 0
+                    ? $"Row {GetRowContext(record)}: Net amount must be positive, got {record.NetAmount}"
+                    : record.NetAmount > decimal.MaxValue / 2
+                        ? $"Row {GetRowContext(record)}: Net amount exceeds maximum allowed value"
+                        : !_vatRateSettings.IsValid(record.VatRate)
+                            ? $"Row {GetRowContext(record)}: Invalid VAT rate {record.VatRate}%. Supported rates: {_vatRateSettings.GetSupportedRatesDisplay()}%"
+                            : null;
 
     private static string GetRowContext(InvoiceCsvRecord record)
         => string.IsNullOrWhiteSpace(record.InvoiceNumber)
