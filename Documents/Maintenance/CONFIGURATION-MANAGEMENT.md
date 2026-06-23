@@ -86,6 +86,107 @@ public sealed class CsvParsingSettings
 
 ---
 
+### 4. **VatCalculationSettings.cs**
+Location: `HungarianVatDeclarationGenerator.Api/Configuration/VatCalculationSettings.cs`
+
+```csharp
+public sealed class VatCalculationSettings
+{
+	public const string SectionName = "VatCalculation";
+
+	[Required]
+	[Range(0, 10)]
+	public required int DecimalPlaces { get; init; } = 2;
+}
+```
+
+**Purpose:** Controls rounding precision for VAT calculations.
+
+**Settings:**
+- `DecimalPlaces` - Number of decimal places for VAT/totals (typically 2)
+
+---
+
+### 5. **RateLimitSettings.cs**
+Location: `HungarianVatDeclarationGenerator.Api/Configuration/RateLimitSettings.cs`
+
+```csharp
+public sealed class RateLimitSettings
+{
+	public const string SectionName = "RateLimit";
+
+	public int UploadLimitCount { get; init; } = 10;
+	public int UploadPeriodMinutes { get; init; } = 1;
+	public int GlobalLimitCount { get; init; } = 100;
+	public int GlobalPeriodHours { get; init; } = 1;
+}
+```
+
+**Purpose:** Controls API rate limiting to prevent abuse.
+
+**Settings:**
+- `UploadLimitCount` - Max uploads per IP within time window
+- `UploadPeriodMinutes` - Time window for upload limit (in minutes)
+- `GlobalLimitCount` - Max total requests per IP within time window
+- `GlobalPeriodHours` - Time window for global limit (in hours)
+
+---
+
+### 6. **FileValidationSettings.cs**
+Location: `HungarianVatDeclarationGenerator.Api/Configuration/FileValidationSettings.cs`
+
+```csharp
+public sealed class FileValidationSettings
+{
+	public const string SectionName = "FileValidation";
+
+	public bool RejectBinaryFormats { get; init; } = true;
+	public RejectedFormat[] RejectedFormats { get; init; } = [];
+}
+
+public sealed class RejectedFormat
+{
+	public required string Name { get; init; }
+	public required string MagicNumberHex { get; init; }
+	public required string ErrorMessage { get; init; }
+}
+```
+
+**Purpose:** Controls rejection of binary formats masquerading as CSV.
+
+**Settings:**
+- `RejectBinaryFormats` - Enable/disable binary format detection
+- `RejectedFormats` - List of formats to reject (PDF, ZIP, XLSX, etc.)
+
+---
+
+### 7. **ApiKeyAuthenticationOptions.cs**
+Location: `HungarianVatDeclarationGenerator.Api/Authentication/ApiKeyAuthenticationOptions.cs`
+
+```csharp
+public sealed class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
+{
+	public const string Scheme = "ApiKey";
+	public const string AuthenticationType = "ApiKey";
+
+	public string HeaderName { get; set; } = "X-API-Key";
+	public string ValidKey { get; set; } = string.Empty;
+}
+```
+
+**Purpose:** Demo-only API key authentication (NOT for production).
+
+**Settings:**
+- `HeaderName` - Name of the HTTP header containing the API key
+- `ValidKey` - The demo API key value
+
+⚠️ **SECURITY WARNING:** This is for demonstration purposes only. In production:
+- Use JWT tokens with proper auth server (Azure AD, Auth0, IdentityServer)
+- Never store secrets in appsettings.json or source control
+- Use Azure Key Vault, AWS Secrets Manager, or environment variables
+
+---
+
 ## Configuration Files
 
 ### **appsettings.json** (Development)
@@ -95,13 +196,14 @@ public sealed class CsvParsingSettings
 	"SupportedRates": [ 5, 18, 27 ]
   },
   "FileUpload": {
-	"MaxFileSizeBytes": 5242880,              // 5 MB
+	"MaxFileSizeBytes": 5242880,
 	"ProcessingTimeoutSeconds": 30,
 	"AllowedContentTypes": [
 	  "text/csv",
 	  "application/vnd.ms-excel"
 	],
-	"AllowedExtensions": [ ".csv" ]
+	"AllowedExtensions": [ ".csv" ],
+	"MaxFormValueLengthBytes": 1048576
   },
   "CsvParsing": {
 	"MaxRowsToProcess": 10000,
@@ -109,11 +211,34 @@ public sealed class CsvParsingSettings
 	"MaxFieldLength": 500,
 	"MaxErrorsToDisplay": 5
   },
+  "VatCalculation": {
+	"DecimalPlaces": 2
+  },
+  "RateLimit": {
+	"UploadLimitCount": 10,
+	"UploadPeriodMinutes": 1,
+	"GlobalLimitCount": 100,
+	"GlobalPeriodHours": 1
+  },
+  "FileValidation": {
+	"RejectBinaryFormats": true,
+	"RejectedFormats": [
+	  {
+		"Name": "PDF",
+		"MagicNumberHex": "25504446",
+		"ErrorMessage": "PDF files are not supported. Please upload a CSV file."
+	  }
+	]
+  },
   "Cors": {
 	"AllowedOrigins": [
 	  "http://localhost:5173",
 	  "http://localhost:5174"
 	]
+  },
+  "ApiKey": {
+	"HeaderName": "X-API-Key",
+	"ValidKey": "challenge-demo-key-2024"
   }
 }
 ```

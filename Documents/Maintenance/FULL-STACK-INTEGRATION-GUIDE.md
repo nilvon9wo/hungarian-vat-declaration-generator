@@ -7,7 +7,7 @@
 cd HungarianVatDeclarationGenerator.Api
 dotnet run
 ```
-**Runs at**: `https://localhost:5001`
+**Runs at**: `https://localhost:7122`
 
 ### Terminal 2 - Frontend Web
 ```bash
@@ -15,6 +15,8 @@ cd HungarianVatDeclarationGenerator.Web
 npm run dev
 ```
 **Runs at**: `http://localhost:5173`
+
+**Note:** The frontend automatically includes `X-API-Key` from `.env` file.
 
 ### Terminal 3 - Run Frontend Tests
 ```bash
@@ -30,37 +32,65 @@ dotnet test
 
 ---
 
+## Prerequisites
+
+### Backend Configuration
+File: `HungarianVatDeclarationGenerator.Api/appsettings.json`
+
+```json
+{
+  "ApiKey": {
+	"HeaderName": "X-API-Key",
+	"ValidKey": "challenge-demo-key-2024"
+  }
+}
+```
+
+### Frontend Configuration
+File: `HungarianVatDeclarationGenerator.Web/.env`
+
+```env
+VITE_API_KEY=challenge-demo-key-2024
+```
+
+If missing, copy from `.env.template`.
+
+---
+
 ## Verification Checklist
 
-### ΓƒÜ Backend Running
-1. Navigate to `https://localhost:5001/swagger`
+### ✓ Backend Running
+1. Navigate to `https://localhost:7122/`
 2. Verify Swagger UI loads
-3. Verify `/api/VatDeclaration/upload` endpoint is visible
+3. Click **🔓 Authorize**, enter `challenge-demo-key-2024`, click Authorize
+4. Verify `/api/VatDeclaration/upload` endpoint is visible with padlock icon
 
-### ΓƒÜ Frontend Running
+### ✓ Frontend Running
 1. Navigate to `http://localhost:5173`
 2. Verify page loads with "Hungarian VAT Declaration Generator" title
 3. Verify file upload input is visible
+4. Check browser console - no authentication errors
 
-### ΓƒÜ CORS Configured
+### ✓ CORS Configured
 - Backend `appsettings.json` includes:
   ```json
   {
 	"Cors": {
 	  "AllowedOrigins": [
-		"http://localhost:5173"
+		"http://localhost:5173",
+		"http://localhost:5174"
 	  ]
 	}
   }
   ```
 
-### ΓƒÜ Proxy Configured
+### ✓ Proxy Configured
 - Frontend `vite.config.ts` includes:
   ```typescript
   server: {
 	proxy: {
 	  '/api': {
-		target: 'https://localhost:5001',
+		target: 'https://localhost:7122',
 		changeOrigin: true,
 		secure: false
 	  }
@@ -206,10 +236,10 @@ Browser (Frontend)
 http://localhost:5173
 	   ↓
 Vite Dev Server
-(Proxy /api/* → https://localhost:5001)
+(Proxy /api/* → https://localhost:7122)
 	   ↓
 ASP.NET Core API
-https://localhost:5001
+https://localhost:7122
 	   ↓
 Services:
 - CsvParserService
@@ -248,7 +278,7 @@ Network Error: Failed to fetch
 ```
 
 **Solutions**:
-1. Verify backend is running: `curl https://localhost:5001/swagger`
+1. Verify backend is running: `curl -k https://localhost:7122/`
 2. Check CORS config includes `http://localhost:5173`
 3. Verify Vite proxy config points to correct backend URL
 
@@ -274,7 +304,7 @@ PDF button does nothing or shows error
 2. Verify backend endpoint returns PDF content-type
 3. Test backend directly: 
    ```bash
-   curl -X POST -F "file=@test.csv" https://localhost:5001/api/VatDeclaration/upload-and-generate-pdf -o test.pdf
+   curl -k -X POST -H "X-API-Key: challenge-demo-key-2024" -F "file=@test.csv" https://localhost:7122/api/VatDeclaration/upload-and-generate-pdf -o test.pdf
    ```
 
 ---
@@ -475,7 +505,7 @@ Your full stack is working correctly when:
 - **Backend Documentation**: `CONFIGURATION-MANAGEMENT.md`, `SECURITY-REVIEW.md`
 - **Frontend Documentation**: `FRONTEND-README.md`, `FRONTEND-IMPLEMENTATION-SUMMARY.md`
 - **Copilot Instructions**: `.github/copilot-instructions.md`
-- **API Documentation**: Swagger UI at `https://localhost:5001/swagger`
+- **API Documentation**: Swagger UI at `https://localhost:7122/`
 
 ---
 

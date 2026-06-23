@@ -50,14 +50,15 @@ VITE_API_KEY=challenge-demo-key-2024
 
 2. Open browser: `https://localhost:7122/`
 
-3. Click "Try it out" on any endpoint
+3. **Authenticate once for all protected endpoints:**
+   - Click the **🔓 Authorize** button (top right of Swagger UI)
+   - Enter API Key: `challenge-demo-key-2024`
+   - Click **Authorize**, then **Close**
 
-4. **Add the API key header manually:**
-   - Click "Add string item" under "Parameters"
-   - Header name: `X-API-Key`
-   - Value: `challenge-demo-key-2024`
-
-5. Upload your CSV file and execute
+4. Now test any endpoint:
+   - Click "Try it out" on any endpoint
+   - Upload your CSV file and execute
+   - The API key is automatically included after authorization
 
 ---
 

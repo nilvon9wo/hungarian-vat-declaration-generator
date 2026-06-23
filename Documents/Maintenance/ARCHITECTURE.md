@@ -136,13 +136,26 @@ Controller returns PDF file
 
 ## How to Verify with Swagger
 
-The API is now running at: **http://localhost:5247**
+The API runs at: **https://localhost:7122**
 
-Swagger UI is available at: **http://localhost:5247** (configured as root)
+Swagger UI is available at: **https://localhost:7122** (configured as root)
+
+### Authentication Required
+
+**All VAT declaration endpoints require API key authentication:**
+
+1. Click the **🔓 Authorize** button (top right)
+2. Enter: `challenge-demo-key-2024`
+3. Click **Authorize**, then **Close**
+
+The `X-API-Key` header will be automatically included in all subsequent requests.
 
 ### Test Endpoints
 
-#### 1. **POST /api/VatDeclaration/upload**
+#### 1. **GET /api/Config** (Public - No Auth)
+Returns upload constraints and allowed file types for frontend.
+
+#### 2. **POST /api/VatDeclaration/upload** (Protected)
 Uploads a CSV and returns JSON summary.
 
 **Steps:**

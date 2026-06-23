@@ -172,6 +172,86 @@ This avoids over-engineering patterns (CQRS, MediatR, etc.) that are unnecessary
 
 ---
 
+### 6. FluentValidation Not Used
+
+**Decision:** Inline validation with `DataAnnotations` and explicit service-level checks.
+
+**Why:**
+- For this challenge scope, inline validation is sufficient and more transparent
+- FluentValidation would add dependency weight without proportional value
+- Validation logic is simple enough to keep in-line with models and services
+
+**Trade-off:** FluentValidation would be beneficial in larger applications where:
+- Complex, multi-step validation rules exist
+- Validation needs to be shared across layers
+- Custom error messages and localization are required
+
+---
+
+### 7. No InterpolatedLogging
+
+**Decision:** Standard `ILogger` with structured logging placeholders (`{Parameter}`).
+
+**Why:**
+- Standard Microsoft pattern, universally understood
+- No additional dependencies
+- Performance overhead avoided
+
+**Alternative considered:** [InterpolatedLogging](https://github.com/Drizin/InterpolatedLogging)
+- Improves maintainability by using C# string interpolation for structured logs
+- Makes structured logging more intuitive and less error-prone
+- **Not used** because it's non-standard and introduces minor performance cost
+
+**Trade-off:** Standard placeholders require careful alignment between format string and arguments. Interpolated logging would eliminate this friction for teams prioritizing maintainability over convention.
+
+---
+
+### 8. No Functional Monads (Try/Option)
+
+**Decision:** Traditional exception handling and nullable reference types.
+
+**Why:**
+- Standard .NET patterns, familiar to all C# developers
+- No external dependencies
+- Exceptions are well-understood and debuggable
+
+**Alternative considered:** [LanguageExt](https://github.com/louthy/language-ext) monads (`Try<T>`, `Option<T>`)
+- Eliminates exceptions-as-control-flow anti-pattern
+- Makes error paths explicit in type signatures
+- Improves composability and testability for functional-style code
+
+**Not used** because:
+- Non-standard in mainstream .NET development
+- Steep learning curve for developers unfamiliar with functional programming
+- Overkill for a coding challenge context
+
+**Trade-off:** Monadic error handling improves maintainability for teams comfortable with functional programming, but adds conceptual overhead for traditional C# developers.
+
+---
+
+### 9. Interface-Based Dependency Injection
+
+**Decision:** Interfaces for all services (`ICsvParserService`, `IVatCalculationService`, etc.).
+
+**Why:**
+- Common .NET convention, expected by most teams
+- Enables easy mocking in unit tests
+- Familiar to reviewers evaluating the code
+
+**Alternative considered:** Virtual classes with [Fody.Virtuosity](https://github.com/Fody/Virtuosity)
+- Eliminates interface boilerplate
+- Auto-makes methods virtual for mocking without manual `virtual` keywords
+- Reduces "interface tax" where every service has a single implementation
+
+**Not used** because:
+- Non-standard approach, adds dependency on Fody
+- Interfaces are widely understood and expected in .NET codebases
+- Challenge scope doesn't justify introducing unfamiliar tooling
+
+**Trade-off:** Interfaces add boilerplate (one extra file per service), but provide clarity and follow established patterns. Virtual classes + Virtuosity would reduce clutter but confuse reviewers unfamiliar with the tooling.
+
+---
+
 ## Running the Application
 
 ### Backend

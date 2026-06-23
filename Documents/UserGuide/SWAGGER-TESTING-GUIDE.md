@@ -2,11 +2,26 @@
 
 ## 🚀 Start the API
 
-The API is already running on: **http://localhost:5247**
+```powershell
+cd HungarianVatDeclarationGenerator.Api
+dotnet run
+```
 
-Open your browser and navigate to: **http://localhost:5247**
+Open your browser and navigate to: **https://localhost:7122**
 
-You should see the Swagger UI with two endpoints available.
+You should see the Swagger UI with available endpoints.
+
+---
+
+## 🔐 Authenticate First
+
+**Before testing protected endpoints, you must authenticate:**
+
+1. Click the **🔓 Authorize** button (top right)
+2. Enter the API key: `challenge-demo-key-2024`
+3. Click **Authorize**, then **Close**
+
+All protected endpoints will now automatically include the `X-API-Key` header.
 
 ---
 
@@ -15,11 +30,12 @@ You should see the Swagger UI with two endpoints available.
 ### Endpoint: `POST /api/VatDeclaration/upload`
 
 **Steps:**
-1. Click on the endpoint to expand it
-2. Click **"Try it out"**
-3. Click **"Choose File"** and select:
+1. Make sure you've authenticated (see above)
+2. Click on the endpoint to expand it
+3. Click **"Try it out"**
+4. Click **"Choose File"** and select:
    - File: `HungarianVatDeclarationGenerator.Api/TestData/sample-invoices.csv`
-4. Click **"Execute"**
+5. Click **"Execute"**
 
 **Expected Result:**
 - **Status Code:** 200 OK
