@@ -67,7 +67,8 @@ Field name: "file"
 ### Error Response
 ```json
 {
-  "error": "CSV file contains no valid invoice data..."
+  "error": "CSV file contains no valid invoice data...",
+  "statusCode": 400
 }
 ```
 
@@ -76,14 +77,14 @@ Field name: "file"
 The frontend runs on `http://localhost:5173` (Vite default).
 
 ### Development Proxy
-Vite proxy configuration forwards `/api/*` requests to `https://localhost:5001`:
+Vite proxy configuration forwards `/api/*` requests to `https://localhost:7122`:
 
 ```typescript
 // vite.config.ts
 server: {
   proxy: {
 	'/api': {
-	  target: 'https://localhost:5001',
+	  target: 'https://localhost:7122',
 	  changeOrigin: true,
 	  secure: false
 	}
@@ -207,7 +208,8 @@ Blob response triggers browser download
 
 ### Validation Errors
 - No file selected → Client-side validation
-- Invalid file type → Backend validation (400)
+- Invalid file type → Client-side validation based on `/api/Config` allowed extensions
+- File too large → Client-side validation based on `/api/Config` max size
 - Invalid CSV format → Backend validation (400)
 - Invalid VAT rates → Backend validation (400)
 
@@ -262,7 +264,8 @@ Uses modern JavaScript features:
 ## Deployment Considerations
 
 ### Environment Variables
-No environment variables required - API URL is relative (`/api`) and proxied in development.
+- `VITE_API_KEY` is required for protected API endpoints in this demo setup.
+- API URL is relative (`/api`) and proxied in development.
 
 ### Production Build
 For production, ensure:
@@ -283,8 +286,6 @@ The backend API must be separately deployed and CORS-configured.
 
 These were intentionally excluded to keep the solution minimal:
 
-- ❌ Client-side CSV validation
-- ❌ File size validation before upload
 - ❌ Progress indicators for large files
 - ❌ Retry logic for failed uploads
 - ❌ Local state persistence

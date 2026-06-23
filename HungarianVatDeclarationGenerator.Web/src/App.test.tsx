@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 import * as api from './services/api';
 import type { ClientConfig } from './types/api';
+import { formatCurrency } from './utils/currency';
 
 vi.mock('./services/api');
 
@@ -12,7 +13,9 @@ const STANDARD_HUNGARIAN_VAT_RATE: number = 27;
 
 // Test file and content constants
 const SAMPLE_CSV_FILENAME: string = 'test.csv';
+const SAMPLE_TEXT_FILENAME: string = 'test.txt';
 const TEXT_CSV_MIME_TYPE: string = 'text/csv';
+const TEXT_PLAIN_MIME_TYPE: string = 'text/plain';
 const APPLICATION_PDF_MIME_TYPE: string = 'application/pdf';
 
 const SAMPLE_ERROR_MESSAGE: string = 'Invalid CSV format';
@@ -28,7 +31,7 @@ const UI_TOTAL_INVOICES_TEXT: RegExp = /Total Invoices Processed:/i;
 const UI_VAT_CATEGORIES_TEXT: RegExp = /VAT Categories/i;
 const UI_DOWNLOAD_PDF_TEXT: string = 'Download PDF Report';
 const UI_PROCESSING_TEXT: string = 'Processing...';
-const UI_CURRENCY_SUFFIX: RegExp = /Ft/i;
+const UI_INVALID_FILE_TYPE_ERROR: string = 'Please select a CSV file';
 
 const MOCK_CONFIG: ClientConfig = {
   maxFileSizeBytes: 5242880,
@@ -126,6 +129,45 @@ describe('App Component', () => {
     });
   });
 
+  it('should show validation error for unsupported file extension', async () => {
+    // Arrange
+    // applyAccept=false allows selecting a non-CSV file in tests so we can verify App validation logic.
+    const user = userEvent.setup({ applyAccept: false });
+    await act(async () => {
+      render(<App />);
+    });
+
+    // Act
+    await uploadFile(user, createTestTextFile());
+
+    // Assert
+    await waitFor(() => {
+      expect(screen.getByText(UI_INVALID_FILE_TYPE_ERROR)).toBeInTheDocument();
+    });
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
+  it('should show validation error when file exceeds configured size limit', async () => {
+    // Arrange
+    const user = userEvent.setup();
+    vi.mocked(api.fetchConfig).mockResolvedValueOnce({
+      ...MOCK_CONFIG,
+      maxFileSizeBytes: 3,
+    });
+    await act(async () => {
+      render(<App />);
+    });
+
+    // Act
+    await uploadFile(user, createFileLargerThanMockLimit());
+
+    // Assert
+    await waitFor(() => {
+      expect(screen.getByText(/File size exceeds .*MB limit/)).toBeInTheDocument();
+    });
+    expect(getSubmitButton()).toBeDisabled();
+  });
+
   it('should show loading state during upload', async () => {
     // Arrange
     const user = userEvent.setup();
@@ -202,6 +244,7 @@ describe('App Component', () => {
       },
     };
     vi.mocked(api.uploadCsvFile).mockResolvedValueOnce(mockResult);
+    const expectedFormattedAmount: string = formatCurrency(netAmount);
     await act(async () => {
       render(<App />);
     });
@@ -212,8 +255,8 @@ describe('App Component', () => {
 
     // Assert
     await waitFor(() => {
-      const formattedAmounts: HTMLElement[] = screen.getAllByText(UI_CURRENCY_SUFFIX);
-      expect(formattedAmounts.length).toBeGreaterThan(0);
+      const pageText: string = normalizeText(document.body.textContent || '');
+      expect(pageText).toContain(normalizeText(expectedFormattedAmount));
     });
   });
 });
@@ -240,6 +283,14 @@ function assertLoadingStateIsActive(): void {
 
 function createTestCsvFile(filename: string = SAMPLE_CSV_FILENAME): File {
   return new File([TEST_FILE_CONTENT], filename, { type: TEXT_CSV_MIME_TYPE });
+}
+
+function createTestTextFile(): File {
+  return new File([TEST_FILE_CONTENT], SAMPLE_TEXT_FILENAME, { type: TEXT_PLAIN_MIME_TYPE });
+}
+
+function createFileLargerThanMockLimit(): File {
+  return new File(['1234'], SAMPLE_CSV_FILENAME, { type: TEXT_CSV_MIME_TYPE });
 }
 
 function createMockVatResult(): api.UploadResult {
@@ -291,4 +342,8 @@ function calculateVat(netAmount: number, vatRate: number): number {
 
 function calculateGross(netAmount: number, vatRate: number): number {
   return netAmount + calculateVat(netAmount, vatRate);
+}
+
+function normalizeText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
 }

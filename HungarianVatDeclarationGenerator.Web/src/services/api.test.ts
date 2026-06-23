@@ -16,6 +16,8 @@ const PDF_CONTENT: string = 'pdf content';
 // HTTP status codes and messages
 const HTTP_STATUS_BAD_REQUEST: number = 400;
 const HTTP_STATUS_TEXT_BAD_REQUEST: string = 'Bad Request';
+const HTTP_STATUS_INTERNAL_SERVER_ERROR: number = 500;
+const HTTP_STATUS_TEXT_INTERNAL_SERVER_ERROR: string = 'Internal Server Error';
 
 // Error messages
 const SAMPLE_ERROR_MESSAGE: string = 'Invalid CSV format';
@@ -81,6 +83,44 @@ describe('API Service', () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe(SAMPLE_ERROR_MESSAGE);
+    });
+
+    it('should parse API error responses with statusCode field', async () => {
+      // Arrange
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        status: HTTP_STATUS_BAD_REQUEST,
+        statusText: HTTP_STATUS_TEXT_BAD_REQUEST,
+        json: async () => ({ error: SAMPLE_ERROR_MESSAGE, statusCode: HTTP_STATUS_BAD_REQUEST }),
+      });
+      const file: File = new File([TEST_FILE_CONTENT], SAMPLE_CSV_FILENAME, { type: TEXT_CSV_MIME_TYPE });
+
+      // Act
+      const result = await uploadCsvFile(file);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe(SAMPLE_ERROR_MESSAGE);
+    });
+
+    it('should use HTTP fallback message when error response is not JSON', async () => {
+      // Arrange
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+        statusText: HTTP_STATUS_TEXT_INTERNAL_SERVER_ERROR,
+        json: async () => {
+          throw new Error('Invalid JSON');
+        },
+      });
+      const file: File = new File([TEST_FILE_CONTENT], SAMPLE_CSV_FILENAME, { type: TEXT_CSV_MIME_TYPE });
+
+      // Act
+      const result = await uploadCsvFile(file);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe(`HTTP ${HTTP_STATUS_INTERNAL_SERVER_ERROR}: ${HTTP_STATUS_TEXT_INTERNAL_SERVER_ERROR}`);
     });
 
     it('should handle network errors', async () => {
