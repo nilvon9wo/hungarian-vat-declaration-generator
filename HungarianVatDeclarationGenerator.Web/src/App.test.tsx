@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import * as api from './services/api';
@@ -44,7 +44,9 @@ describe('App Component', () => {
 
   it('should render the upload form', async () => {
     // Act
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     // Assert
     await waitFor(() => {
@@ -57,7 +59,9 @@ describe('App Component', () => {
   it('should enable submit button when file is selected', async () => {
     // Arrange
     const user = userEvent.setup();
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     const submitButton: HTMLElement = getSubmitButton();
 
     // Sanity check - button should be disabled initially
@@ -72,7 +76,9 @@ describe('App Component', () => {
 
   it('should display error when form is submitted without file', async () => {
     // Act
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     const submitButton: HTMLElement = getSubmitButton();
 
     // Assert
@@ -83,7 +89,9 @@ describe('App Component', () => {
     // Arrange
     const user = userEvent.setup();
     vi.mocked(api.uploadCsvFile).mockResolvedValueOnce(createMockVatResult());
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     await uploadFile(user, createTestCsvFile());
 
     // Act
@@ -104,7 +112,9 @@ describe('App Component', () => {
     vi.mocked(api.uploadCsvFile).mockResolvedValueOnce(
       createMockErrorResult(SAMPLE_ERROR_MESSAGE)
     );
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     await uploadFile(user, createTestCsvFile());
 
     // Act
@@ -124,7 +134,9 @@ describe('App Component', () => {
       resolveUpload = resolve;
     });
     vi.mocked(api.uploadCsvFile).mockReturnValueOnce(uploadPromise);
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     await uploadFile(user, createTestCsvFile());
 
     // Act
@@ -146,7 +158,9 @@ describe('App Component', () => {
     vi.mocked(api.downloadPdf).mockResolvedValueOnce(mockBlob);
     global.URL.createObjectURL = vi.fn(() => BLOB_MOCK_URL);
     global.URL.revokeObjectURL = vi.fn();
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     const file: File = createTestCsvFile();
     await uploadFile(user, file);
     await clickSubmitButton(user);
@@ -188,7 +202,9 @@ describe('App Component', () => {
       },
     };
     vi.mocked(api.uploadCsvFile).mockResolvedValueOnce(mockResult);
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     await uploadFile(user, createTestCsvFile());
 
     // Act

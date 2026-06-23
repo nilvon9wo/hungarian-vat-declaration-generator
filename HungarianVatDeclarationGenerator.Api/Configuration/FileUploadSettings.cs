@@ -34,4 +34,11 @@ public sealed class FileUploadSettings
     [Required]
     [MinLength(1)]
     public required string[] AllowedExtensions { get; init; }
+
+    /// <summary>
+    /// Maximum length for individual form field values in bytes (default: 1 MB).
+    /// This protects against excessively long form values.
+    /// </summary>
+    [Required]
+    public required long MaxFormValueLengthBytes { get; init; } = 1024 * 1024;
 }

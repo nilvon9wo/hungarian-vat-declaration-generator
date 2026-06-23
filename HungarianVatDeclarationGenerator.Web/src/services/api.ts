@@ -11,11 +11,11 @@ export interface UploadResult {
 }
 
 export async function fetchConfig(): Promise<ClientConfig> {
+  // Config endpoint is public ([AllowAnonymous]) - no auth header needed
   const response: Response = await fetchWithTimeout(
     `${API_BASE_URL}/Config`,
     {
       method: 'GET',
-      headers: createAuthHeaders(),
     },
     REQUEST_TIMEOUT_MS
   );

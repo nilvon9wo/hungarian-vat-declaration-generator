@@ -1,9 +1,13 @@
+using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 
 namespace HungarianVatDeclarationGenerator.Api.Services;
 
-public sealed class VatCalculationService : IVatCalculationService
+public sealed class VatCalculationService(VatCalculationSettings vatCalculationSettings) : IVatCalculationService
 {
+    private readonly VatCalculationSettings _vatCalculationSettings = vatCalculationSettings
+        ?? throw new ArgumentNullException(nameof(vatCalculationSettings));
+
     public VatDeclarationResult Calculate(IReadOnlyList<Invoice> invoices)
     {
         if (invoices.Count == 0)
@@ -16,9 +20,9 @@ public sealed class VatCalculationService : IVatCalculationService
             .Select(group => new VatSummary
             {
                 VatRate = group.Key,
-                TotalNetAmount = group.Sum(inv => inv.NetAmount),
-                TotalVatAmount = group.Sum(inv => inv.VatAmount),
-                TotalGrossAmount = group.Sum(inv => inv.GrossAmount),
+                TotalNetAmount = RoundDecimal(group.Sum(inv => inv.NetAmount)),
+                TotalVatAmount = RoundDecimal(group.Sum(inv => inv.VatAmount)),
+                TotalGrossAmount = RoundDecimal(group.Sum(inv => inv.GrossAmount)),
                 InvoiceCount = group.Count()
             })
             .OrderBy(summary => summary.VatRate)];
@@ -26,10 +30,13 @@ public sealed class VatCalculationService : IVatCalculationService
         return new VatDeclarationResult
         {
             SummariesByVatRate = summariesByRate,
-            GrandTotalNet = summariesByRate.Sum(s => s.TotalNetAmount),
-            GrandTotalVat = summariesByRate.Sum(s => s.TotalVatAmount),
-            GrandTotalGross = summariesByRate.Sum(s => s.TotalGrossAmount),
+            GrandTotalNet = RoundDecimal(summariesByRate.Sum(s => s.TotalNetAmount)),
+            GrandTotalVat = RoundDecimal(summariesByRate.Sum(s => s.TotalVatAmount)),
+            GrandTotalGross = RoundDecimal(summariesByRate.Sum(s => s.TotalGrossAmount)),
             TotalInvoiceCount = summariesByRate.Sum(s => s.InvoiceCount)
         };
     }
+
+    private decimal RoundDecimal(decimal value)
+        => Math.Round(value, _vatCalculationSettings.DecimalPlaces);
 }

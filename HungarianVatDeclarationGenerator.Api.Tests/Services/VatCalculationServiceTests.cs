@@ -1,3 +1,4 @@
+using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Models;
 using HungarianVatDeclarationGenerator.Api.Services;
 
@@ -17,7 +18,10 @@ public sealed class VatCalculationServiceTests
     private const string SAMPLE_INVOICE_NUMBER_004 = "INV-004";
     private const string SAMPLE_INVOICE_NUMBER_005 = "INV-005";
 
-    private readonly VatCalculationService _service = new();
+    private readonly VatCalculationService _service = new(new VatCalculationSettings
+    {
+        DecimalPlaces = 2
+    });
 
     [Fact]
     public void Calculate_WithEmptyInvoiceList_ReturnsZeroTotals()

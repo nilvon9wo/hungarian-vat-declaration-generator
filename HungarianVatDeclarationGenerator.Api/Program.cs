@@ -5,9 +5,11 @@ using HungarianVatDeclarationGenerator.Api.Configuration;
 using HungarianVatDeclarationGenerator.Api.Middleware;
 using HungarianVatDeclarationGenerator.Api.Services;
 using HungarianVatDeclarationGenerator.Api.Swagger;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.OpenApi;
 using System.Globalization;
+using System.Text.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -35,13 +37,16 @@ static void ConfigureApplicationSettings(IServiceCollection services, IConfigura
     services.ConfigureSettings<FileUploadSettings>(configuration, FileUploadSettings.SectionName);
     services.ConfigureSettings<CsvParsingSettings>(configuration, CsvParsingSettings.SectionName);
     services.ConfigureSettings<ApiKeySettings>(configuration, ApiKeySettings.SectionName);
+    services.ConfigureSettings<VatCalculationSettings>(configuration, VatCalculationSettings.SectionName);
+    services.ConfigureSettings<RateLimitSettings>(configuration, RateLimitSettings.SectionName);
+    services.ConfigureSettings<FileValidationSettings>(configuration, FileValidationSettings.SectionName);
 }
 
 static void ConfigureFrameworkOptions(IServiceCollection services, IConfiguration configuration)
 {
     services.Configure<JsonOptions>(options =>
     {
-        options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
     FileUploadSettings fileUploadSettings = configuration
@@ -49,10 +54,14 @@ static void ConfigureFrameworkOptions(IServiceCollection services, IConfiguratio
         .Get<FileUploadSettings>()
         ?? throw new InvalidOperationException($"Missing configuration: {FileUploadSettings.SectionName}");
 
-    services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    services.Configure<FormOptions>(options =>
     {
+        // Defense in depth: MultipartBodyLengthLimit is set to match application-level 
+        // MaxFileSizeBytes to provide consistent validation at both framework and application layers
         options.MultipartBodyLengthLimit = fileUploadSettings.MaxFileSizeBytes;
-        options.ValueLengthLimit = 1024 * 1024;
+
+        // MaxFormValueLengthBytes protects against excessively long individual form field values
+        options.ValueLengthLimit = (int)fileUploadSettings.MaxFormValueLengthBytes;
     });
 }
 
@@ -92,6 +101,11 @@ static void ConfigureAuthentication(IServiceCollection services, IConfiguration 
 
 static void ConfigureRateLimiting(IServiceCollection services, IConfiguration configuration)
 {
+    RateLimitSettings rateLimitSettings = configuration
+        .GetSection(RateLimitSettings.SectionName)
+        .Get<RateLimitSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration: {RateLimitSettings.SectionName}");
+
     services.AddMemoryCache();
     services.Configure<IpRateLimitOptions>(options =>
     {
@@ -105,14 +119,14 @@ static void ConfigureRateLimiting(IServiceCollection services, IConfiguration co
             new RateLimitRule
             {
                 Endpoint = "POST:/api/VatDeclaration/*",
-                Period = "1m",
-                Limit = 10
+                Period = $"{rateLimitSettings.UploadPeriodMinutes}m",
+                Limit = rateLimitSettings.UploadLimitCount
             },
             new RateLimitRule
             {
                 Endpoint = "*",
-                Period = "1h",
-                Limit = 100
+                Period = $"{rateLimitSettings.GlobalPeriodHours}h",
+                Limit = rateLimitSettings.GlobalLimitCount
             }
         ];
     });
@@ -174,7 +188,7 @@ static void ConfigureCors(IServiceCollection services, IConfiguration configurat
         options.AddPolicy("AllowFrontend", policy =>
         {
             policy.WithOrigins(allowedOrigins)
-                  .WithMethods("POST", "OPTIONS")
+                  .WithMethods("GET", "POST", "OPTIONS")
                   .WithHeaders("Content-Type", "Accept", "X-API-Key")
                   .WithExposedHeaders("Content-Disposition")
                   .SetPreflightMaxAge(TimeSpan.FromMinutes(10));

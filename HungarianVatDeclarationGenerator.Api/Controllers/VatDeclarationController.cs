@@ -13,7 +13,8 @@ public sealed class VatDeclarationController(
     ICsvParserService csvParser,
     IVatCalculationService vatCalculator,
     IPdfGenerationService pdfGenerator,
-    FileUploadSettings fileUploadSettings
+    FileUploadSettings fileUploadSettings,
+    FileValidationSettings fileValidationSettings
 ) : ControllerBase
 {
     private readonly ICsvParserService _csvParser = csvParser
@@ -24,6 +25,8 @@ public sealed class VatDeclarationController(
         ?? throw new ArgumentNullException(nameof(pdfGenerator));
     private readonly FileUploadSettings _fileUploadSettings = fileUploadSettings
         ?? throw new ArgumentNullException(nameof(fileUploadSettings));
+    private readonly FileValidationSettings _fileValidationSettings = fileValidationSettings
+        ?? throw new ArgumentNullException(nameof(fileValidationSettings));
 
     /// <summary>
     /// Upload a CSV file containing invoice data and receive a VAT declaration summary.
@@ -102,16 +105,21 @@ public sealed class VatDeclarationController(
         ValidateFileContent(file);
     }
 
-    private static void ValidateFileContent(IFormFile file)
+    private void ValidateFileContent(IFormFile file)
     {
         using Stream stream = file.OpenReadStream();
-        Span<byte> buffer = stackalloc byte[3];
+        Span<byte> buffer = stackalloc byte[8];
         int bytesRead = stream.Read(buffer);
         stream.Position = 0;
 
         if (bytesRead == 0)
         {
             throw new InvalidOperationException("Uploaded file is empty");
+        }
+
+        if (_fileValidationSettings.RejectBinaryFormats)
+        {
+            CheckForBinaryFormats(buffer[..bytesRead]);
         }
 
         bool isValidCsv = (buffer[0] == 0xEF && bytesRead >= 3 && buffer[1] == 0xBB && buffer[2] == 0xBF) ||
@@ -121,5 +129,28 @@ public sealed class VatDeclarationController(
         {
             throw new InvalidOperationException("Uploaded file does not appear to be a valid CSV file");
         }
+    }
+
+    private void CheckForBinaryFormats(ReadOnlySpan<byte> fileHeader)
+    {
+        foreach (RejectedFormat format in _fileValidationSettings.RejectedFormats)
+        {
+            byte[] magicBytes = ConvertHexToBytes(format.MagicNumberHex);
+            if (fileHeader.Length >= magicBytes.Length && fileHeader[..magicBytes.Length].SequenceEqual(magicBytes))
+            {
+                throw new InvalidOperationException(format.ErrorMessage);
+            }
+        }
+    }
+
+    private static byte[] ConvertHexToBytes(string hex)
+    {
+        int numberChars = hex.Length;
+        byte[] bytes = new byte[numberChars / 2];
+        for (int i = 0; i < numberChars; i += 2)
+        {
+            bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+        }
+        return bytes;
     }
 }
