@@ -235,9 +235,19 @@ static void ConfigureDevelopmentFeatures(WebApplication app)
     string? swaggerEnvValue = app.Configuration["EnableSwaggerInProduction"];
     bool enableSwagger = ParseBoolFromConfig(swaggerEnvValue);
 
+    // DEBUG: Log to see what's happening
+    Console.WriteLine($"[STARTUP] Environment: {app.Environment.EnvironmentName}");
+    Console.WriteLine($"[STARTUP] EnableSwaggerInProduction env var: '{swaggerEnvValue}'");
+    Console.WriteLine($"[STARTUP] Parsed enableSwagger: {enableSwagger}");
+
     if (app.Environment.IsDevelopment() || enableSwagger)
     {
+        Console.WriteLine("[STARTUP] Configuring Swagger...");
         ConfigureSwagger(app);
+    }
+    else
+    {
+        Console.WriteLine("[STARTUP] Swagger is disabled");
     }
 }
 
